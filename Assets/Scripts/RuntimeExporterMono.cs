@@ -85,8 +85,6 @@ public class RuntimeExporterMono : MonoBehaviour
 			{
 				new NativeShare()
 					.AddFile(folderPath, fileName)
-					.SetSubject("Get ARway App!")
-					.SetText("fbx exported of 3d scan")
 					.SetCallback((result, shareTarget) => Debug.Log("Share result: " + result + "\n Selected app: " + shareTarget))
 					.Share();
 			}
