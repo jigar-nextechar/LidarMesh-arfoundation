@@ -22,6 +22,23 @@ public class Mapper : MonoBehaviour
             return; // Exit the Start method to prevent further errors
         }
 
+        string mapDirectory = Path.Combine(Application.persistentDataPath, "map");
+
+        // Check if the "map" directory exists before attempting to delete it
+        if (Directory.Exists(mapDirectory))
+        {
+            try
+            {
+                // Delete the "images" and "Pose" directories along with their contents
+                Directory.Delete(Path.Combine(mapDirectory, "images"), true);
+                Directory.Delete(Path.Combine(mapDirectory, "Pose"), true);
+                Debug.Log("Previous image and pose data deleted successfully.");
+            }
+            catch (Exception e)
+            {
+                Debug.LogError("Exception while deleting previous data: " + e);
+            }
+        }
         // Create the directories if they don't exist
         string imageDirectory = Path.Combine(Application.persistentDataPath, "map/images");
         string poseDirectory = Path.Combine(Application.persistentDataPath, "map/Pose");
@@ -30,27 +47,27 @@ public class Mapper : MonoBehaviour
         {
             if (!Directory.Exists(imageDirectory))
                 Directory.CreateDirectory(imageDirectory);
-            else
-                System.IO.File.Delete(imageDirectory);
 
             if (!Directory.Exists(poseDirectory))
                 Directory.CreateDirectory(poseDirectory);
-            else
-                System.IO.File.Delete(poseDirectory);
+
         }
         catch (Exception e)
         {
             Debug.LogError("Exception while creating directories: " + e);
             return; // Exit the Start method to prevent further errors
         }
-
-        
     }
 
     public void StartMapping()
     {
-
         InvokeRepeating("AsynchronousConversion", 1.0f, 0.2f);
+
+        if (m_CameraManager.TryGetIntrinsics(out XRCameraIntrinsics cameraIntrinsics))
+        {
+            SaveCameraIntrinsics("CameraIntrinsics_" + imageOrder.ToString() + ".txt",cameraIntrinsics);
+
+        }
     }
 
     void AsynchronousConversion()
@@ -74,11 +91,11 @@ public class Mapper : MonoBehaviour
         var request = image.ConvertAsync(new XRCpuImage.ConversionParams
         {
             inputRect = new RectInt(0, 0, image.width, image.height),
-            outputDimensions = new Vector2Int(image.width/2, image.height/2),
+            outputDimensions = new Vector2Int(image.width / 2, image.height / 2),
             outputFormat = TextureFormat.RGB24,
             transformation = XRCpuImage.Transformation.MirrorY
         });
-
+        
         while (!request.status.IsDone())
             yield return null;
 
@@ -99,11 +116,12 @@ public class Mapper : MonoBehaviour
         texture.Apply();
 
         SaveCameraPose("CameraPose_" + imageOrder.ToString() + ".txt");
+        //SaveCameraIntrinsics("CameraIntrinsics_" + imageOrder.ToString() + ".txt", m_CameraManager.GetActiveCamera());
+
         SaveTextureAsJPG(texture, "Image_" + imageOrder.ToString() + ".jpg");
 
         imageOrder++;
         request.Dispose();
-
     }
 
     void SaveTextureAsJPG(Texture2D texture, string fileName)
@@ -139,6 +157,30 @@ public class Mapper : MonoBehaviour
         catch (Exception e)
         {
             Debug.LogError("Exception while saving camera pose: " + e);
+        }
+    }
+
+    void SaveCameraIntrinsics(string fileName, XRCameraIntrinsics intrinsics)
+    {
+        try
+        {
+            string filePath = Path.Combine(Application.persistentDataPath, "map/Pose", fileName);
+
+            using (StreamWriter writer = new StreamWriter(filePath))
+            {
+                writer.WriteLine("Fx " + intrinsics.focalLength.x.ToString());
+                writer.WriteLine("Fy " + intrinsics.focalLength.y.ToString());
+                writer.WriteLine("Px " + intrinsics.principalPoint.x.ToString());
+                writer.WriteLine("Py " + intrinsics.principalPoint.y.ToString());
+                //writer.WriteLine("Resolution: " + intrinsics.resolution.ToString());
+
+            }
+
+            Debug.Log("Camera intrinsics saved: " + filePath);
+        }
+        catch (Exception e)
+        {
+            Debug.LogError("Exception while saving camera intrinsics: " + e);
         }
     }
 }
