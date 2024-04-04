@@ -10,7 +10,6 @@ namespace UnityEngine.XR.ARFoundation
 {
     public class RuntimeExporterMono : MonoBehaviour
     {
-        public GameObject rootObjectToExport;
         public GameObject meshManager;
         public XROrigin origin;
         //public string RelativeFolderPath = "/Ignore/RuntimeExport/";
@@ -18,9 +17,21 @@ namespace UnityEngine.XR.ARFoundation
         //public string TextureFolderName = "FBXTextures/";
         public bool UseGUI = true;
 
+        public void StartMeshing()
+        {
+            if (origin.TrackablesParent != null)
+            {
+                foreach (Transform item in origin.TrackablesParent)
+                {
+                    Destroy(item.gameObject);
+                }
+            }
+            meshManager.SetActive(true);
+        }
+
         public void Export()
         {
-            //meshManager.SetActive(false);
+            meshManager.SetActive(false);
             //ExportGameObject(rootObjectToExport, RelativeFolderPath, FileName, TextureFolderName);
             //SimpleExport();
             AdvancedExport();
@@ -31,11 +42,11 @@ namespace UnityEngine.XR.ARFoundation
             // Example of gathering GameObjects to be exported (recursively)
             //var rootLevelNodes = GameObject.FindGameObjectsWithTag("ExportMe");
             List<GameObject> rootLevelNodes = new List<GameObject>();
-            if (rootObjectToExport.transform.childCount > 1)
+            if (origin.TrackablesParent.childCount > 1)
             {
-                for (int i = 1; i < rootObjectToExport.transform.childCount; i++)
+                for (int i = 1; i < origin.TrackablesParent.childCount; i++)
                 {
-                    rootLevelNodes.Add(rootObjectToExport.transform.GetChild(i).gameObject);
+                    rootLevelNodes.Add(origin.TrackablesParent.GetChild(i).gameObject);
                 }
             }
 
@@ -68,7 +79,6 @@ namespace UnityEngine.XR.ARFoundation
                 }
             }
         }
-
 
         async void AdvancedExport()
         {
