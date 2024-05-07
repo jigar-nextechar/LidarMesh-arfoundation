@@ -65,7 +65,7 @@ public class Mapper : MonoBehaviour
 
         if (m_CameraManager.TryGetIntrinsics(out XRCameraIntrinsics cameraIntrinsics))
         {
-            SaveCameraIntrinsics("CameraIntrinsics_" + imageOrder.ToString() + ".txt",cameraIntrinsics);
+            SaveCameraIntrinsics("CameraIntrinsics_" + imageOrder.ToString() + ".txt", cameraIntrinsics);
 
         }
     }
@@ -76,7 +76,7 @@ public class Mapper : MonoBehaviour
         {
             if (m_CameraManager.TryAcquireLatestCpuImage(out XRCpuImage image))
             {
-                StartCoroutine(ConvertImageAsync(image));
+                StartCoroutine(ConvertImageAsync(image, "Image_" + imageOrder.ToString() + ".png"));
                 image.Dispose();
             }
         }
@@ -84,18 +84,22 @@ public class Mapper : MonoBehaviour
         {
             Debug.LogError("Exception during image acquisition: " + e);
         }
+
+        SaveCameraPose("CameraPose_" + imageOrder.ToString() + ".txt");
+
+        imageOrder++;
     }
 
-    IEnumerator ConvertImageAsync(XRCpuImage image)
+    IEnumerator ConvertImageAsync(XRCpuImage image, string imagefilename)
     {
         var request = image.ConvertAsync(new XRCpuImage.ConversionParams
         {
             inputRect = new RectInt(0, 0, image.width, image.height),
             outputDimensions = new Vector2Int(image.width / 2, image.height / 2),
             outputFormat = TextureFormat.RGB24,
-            transformation = XRCpuImage.Transformation.MirrorY
+            transformation = XRCpuImage.Transformation.MirrorX
         });
-        
+
         while (!request.status.IsDone())
             yield return null;
 
@@ -115,27 +119,27 @@ public class Mapper : MonoBehaviour
         texture.LoadRawTextureData(rawData);
         texture.Apply();
 
-        SaveCameraPose("CameraPose_" + imageOrder.ToString() + ".txt");
+
         //SaveCameraIntrinsics("CameraIntrinsics_" + imageOrder.ToString() + ".txt", m_CameraManager.GetActiveCamera());
 
-        SaveTextureAsJPG(texture, "Image_" + imageOrder.ToString() + ".jpg");
+        //SaveTextureAsJPG(texture, "Image_" + imageOrder.ToString() + ".jpg");
+        SaveTextureAsPNG(texture, imagefilename);
 
-        imageOrder++;
         request.Dispose();
     }
 
-    void SaveTextureAsJPG(Texture2D texture, string fileName)
+    void SaveTextureAsPNG(Texture2D texture, string fileName)
     {
         try
         {
-            byte[] jpgData = texture.EncodeToJPG();
+            byte[] jpgData = texture.EncodeToPNG();
             string filePath = Path.Combine(Application.persistentDataPath, "map/images", fileName);
             File.WriteAllBytes(filePath, jpgData);
-            Debug.Log("Texture saved as JPG: " + filePath);
+            Debug.Log("Texture saved as PNG: " + filePath);
         }
         catch (Exception e)
         {
-            Debug.LogError("Exception while saving texture as JPG: " + e);
+            Debug.LogError("Exception while saving texture as PNG: " + e);
         }
     }
 
@@ -168,12 +172,11 @@ public class Mapper : MonoBehaviour
 
             using (StreamWriter writer = new StreamWriter(filePath))
             {
-                writer.WriteLine("Fx " + intrinsics.focalLength.x.ToString());
-                writer.WriteLine("Fy " + intrinsics.focalLength.y.ToString());
-                writer.WriteLine("Px " + intrinsics.principalPoint.x.ToString());
-                writer.WriteLine("Py " + intrinsics.principalPoint.y.ToString());
-                //writer.WriteLine("Resolution: " + intrinsics.resolution.ToString());
-
+                writer.WriteLine("Fx " + (intrinsics.focalLength.x / 2).ToString());
+                writer.WriteLine("Fy " + (intrinsics.focalLength.y / 2).ToString());
+                writer.WriteLine("Px " + (intrinsics.principalPoint.x / 2).ToString());
+                writer.WriteLine("Py " + (intrinsics.principalPoint.y / 2).ToString());
+                writer.WriteLine("Resolution: " + (intrinsics.resolution / 2).ToString());
             }
 
             Debug.Log("Camera intrinsics saved: " + filePath);
